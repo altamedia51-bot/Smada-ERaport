@@ -1,0 +1,25 @@
+{
+  "entities": {
+    "Student": {
+      "title": "Student",
+      "description": "Student data",
+      "type": "object",
+      "properties": {
+        "nis": { "type": "string" },
+        "nisn": { "type": "string" },
+        "name": { "type": "string" },
+        "gender": { "type": "string", "enum": ["L", "P"] },
+        "classId": { "type": "string" },
+        "major": { "type": "string", "enum": ["MIPA", "IPS", "Bahasa"] },
+        "status": { "type": "string", "enum": ["active", "mutated", "graduated", "dropped"] }
+      },
+      "required": ["nis", "name"]
+    }
+  },
+  "firestore": {
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/Student" },
+      "description": "A collection of students in the school."
+    }
+  }
+}

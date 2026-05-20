@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidStudent(data) {
+      return data.keys().hasAll(['nis', 'name'])
+        && data.nis is string && data.nis.size() <= 50
+        && data.name is string && data.name.size() <= 100;
+    }
+
+    match /students/{studentId} {
+      // For demo purposes, we allow any signed in user to read and write student data
+      allow read: if isAuthenticated();
+      
+      allow create: if isAuthenticated()
+        && isValidId(studentId)
+        && isValidStudent(request.resource.data);
+        
+      allow update: if isAuthenticated()
+        && isValidId(studentId)
+        && isValidStudent(request.resource.data);
+        
+      allow delete: if isAuthenticated() && isValidId(studentId);
+    }
+  }
+}

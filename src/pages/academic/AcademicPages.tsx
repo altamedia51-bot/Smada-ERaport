@@ -1,12 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Save, FileCheck, Search, Printer } from 'lucide-react';
-import { mockStudents, mockClasses, mockSubjects } from '../../store/mockDb';
+import { mockClasses, mockSubjects } from '../../store/mockDb';
+import { collection, query, onSnapshot } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 export function InputNilai() {
   const [selectedClass, setSelectedClass] = useState(mockClasses[0].id);
   const [selectedSubject, setSelectedSubject] = useState(mockSubjects[0].id);
+  const [students, setStudents] = useState<any[]>([]);
+
+  useEffect(() => {
+    const q = query(collection(db, 'students'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const studentsData: any[] = [];
+      querySnapshot.forEach((doc) => {
+        studentsData.push({ id: doc.id, ...doc.data() });
+      });
+      setStudents(studentsData);
+    });
+    return () => unsubscribe();
+  }, []);
   
-  const classStudents = mockStudents.filter(s => s.classId === selectedClass);
+  const classStudents = students.filter(s => s.classId === selectedClass);
 
   return (
     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
@@ -89,7 +104,21 @@ export function InputNilai() {
 
 export function InputKehadiran() {
   const selectedClass = mockClasses[0].id;
-  const classStudents = mockStudents.filter(s => s.classId === selectedClass);
+  const [students, setStudents] = useState<any[]>([]);
+
+  useEffect(() => {
+    const q = query(collection(db, 'students'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const studentsData: any[] = [];
+      querySnapshot.forEach((doc) => {
+        studentsData.push({ id: doc.id, ...doc.data() });
+      });
+      setStudents(studentsData);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const classStudents = students.filter(s => s.classId === selectedClass);
 
   return (
     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
@@ -142,7 +171,21 @@ export function InputKehadiran() {
 
 export function CetakRaport() {
   const selectedClass = mockClasses[0].id;
-  const classStudents = mockStudents.filter(s => s.classId === selectedClass);
+  const [students, setStudents] = useState<any[]>([]);
+
+  useEffect(() => {
+    const q = query(collection(db, 'students'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const studentsData: any[] = [];
+      querySnapshot.forEach((doc) => {
+        studentsData.push({ id: doc.id, ...doc.data() });
+      });
+      setStudents(studentsData);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const classStudents = students.filter(s => s.classId === selectedClass);
 
   const handlePrint = (e: React.MouseEvent) => {
     e.preventDefault();

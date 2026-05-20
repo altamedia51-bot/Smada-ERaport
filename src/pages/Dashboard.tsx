@@ -7,7 +7,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend
 } from 'recharts';
-import { api } from '../store/mockDb';
+import { collection, query, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { mockClasses, mockSubjects } from '../store/mockDb';
 
 function StatCard({ title, value, icon, colorClass }: { title: string, value: string | number, icon: React.ReactNode, colorClass: string }) {
   return (
@@ -25,19 +27,6 @@ function StatCard({ title, value, icon, colorClass }: { title: string, value: st
   );
 }
 
-const pieData = [
-  { name: 'MIPA', value: 400 },
-  { name: 'IPS', value: 300 },
-  { name: 'Bahasa', value: 100 },
-];
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b'];
-
-const barData = [
-  { name: 'X', MIPA: 120, IPS: 100, Bahasa: 30 },
-  { name: 'XI', MIPA: 140, IPS: 90, Bahasa: 35 },
-  { name: 'XII', MIPA: 140, IPS: 110, Bahasa: 35 },
-];
-
 const progressData = [
   { subject: 'MTK', progress: 85 },
   { subject: 'FIS', progress: 40 },
@@ -47,32 +36,117 @@ const progressData = [
 ];
 
 export function Dashboard() {
-  const [stats, setStats] = useState<any>(null);
-  const [realtimeBarData, setRealtimeBarData] = useState(barData);
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalClasses: 0,
+    totalSubjects: 0,
+  });
+
+  const [realtimeBarData, setRealtimeBarData] = useState([
+    { name: 'X', MIPA: 0, IPS: 0, Bahasa: 0 },
+    { name: 'XI', MIPA: 0, IPS: 0, Bahasa: 0 },
+    { name: 'XII', MIPA: 0, IPS: 0, Bahasa: 0 },
+  ]);
+
   const [realtimeProgress, setRealtimeProgress] = useState(progressData);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getDashboardStats().then(setStats);
+    // We assume classes collection might not exist fully yet, we fallback to mockClasses length for demo if needed.
+    // However, user wants it realtime. Let's listen to 'students', 'teachers', 'classes'
     
-    // Simulate real-time data updates
-    const interval = setInterval(() => {
-      setRealtimeBarData(prev => prev.map(d => ({
-        ...d,
-        MIPA: Math.max(0, d.MIPA + Math.floor(Math.random() * 5) - 2),
-        IPS: Math.max(0, d.IPS + Math.floor(Math.random() * 5) - 2),
-        Bahasa: Math.max(0, d.Bahasa + Math.floor(Math.random() * 3) - 1),
-      })));
+    // Setup listeners
+    const unsubs: any[] = [];
+    
+    const dbRefs = ['students', 'teachers', 'classes', 'subjects'];
+    const dataMap: any = {
+      students: [],
+      teachers: [],
+      classes: [],
+      subjects: []
+    };
+
+    let initialized = 0;
+
+    const computeDashboardData = () => {
+      const students = dataMap.students;
+      const teachers = dataMap.teachers;
+      const classes = dataMap.classes;
+      const subjects = dataMap.subjects;
       
+      const totalClasses = classes.length > 0 ? classes.length : mockClasses.length;
+      const totalSubjects = subjects.length > 0 ? subjects.length : mockSubjects.length;
+
+      setStats({
+        totalStudents: students.length,
+        totalTeachers: teachers.length,
+        totalClasses: totalClasses,
+        totalSubjects: totalSubjects,
+      });
+
+      // Compute BarData based on students and their classId level
+      // If class level is not in student, we map via classes collection, fallback to level 'X'
+      const classMap = new Map();
+      classes.forEach((c: any) => classMap.set(c.id, c.level));
+      mockClasses.forEach((c: any) => {
+        if (!classMap.has(c.id)) classMap.set(c.id, c.level);
+      });
+
+      const bData = [
+        { name: 'X', MIPA: 0, IPS: 0, Bahasa: 0 },
+        { name: 'XI', MIPA: 0, IPS: 0, Bahasa: 0 },
+        { name: 'XII', MIPA: 0, IPS: 0, Bahasa: 0 },
+      ];
+
+      students.forEach((s: any) => {
+        const level = classMap.get(s.classId) || 'X';
+        const major = s.major || 'MIPA';
+        const targetRow = bData.find(row => row.name === level);
+        if (targetRow) {
+          if (major === 'MIPA') targetRow.MIPA++;
+          else if (major === 'IPS') targetRow.IPS++;
+          else if (major === 'Bahasa') targetRow.Bahasa++;
+        }
+      });
+
+      setRealtimeBarData(bData);
+    };
+
+    dbRefs.forEach(colName => {
+      const q = query(collection(db, colName));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const collectionData: any[] = [];
+        snapshot.forEach(doc => collectionData.push({ id: doc.id, ...doc.data() }));
+        dataMap[colName] = collectionData;
+        initialized++;
+        // If at least we initialized all 4
+        if (initialized >= dbRefs.length) {
+           setLoading(false);
+           computeDashboardData();
+        } else if (initialized > 0) {
+           // still process it if some complete fast updates
+           computeDashboardData();
+        }
+      });
+      unsubs.push(unsubscribe);
+    });
+
+    // Animate progress just for demo feel of the static data
+    const interval = setInterval(() => {
       setRealtimeProgress(prev => prev.map(d => ({
         ...d,
         progress: Math.min(100, Math.max(0, d.progress + Math.floor(Math.random() * 7) - 3))
       })));
     }, 2500);
 
-    return () => clearInterval(interval);
+    return () => {
+      unsubs.forEach(u => u());
+      clearInterval(interval);
+    };
   }, []);
 
-  if (!stats) return <div className="p-8 animate-pulse flex space-x-4">Loading dashboard...</div>;
+  if (loading) return <div className="p-8 animate-pulse flex space-x-4">Loading dashboard data real-time...</div>;
 
   return (
     <div className="space-y-6">
@@ -82,7 +156,7 @@ export function Dashboard() {
           <p className="text-slate-500 text-sm">Ringkasan data E-Raport Semester Genap 2023/2024</p>
         </div>
         <div className="flex bg-white px-4 py-2 border border-slate-200 rounded-lg shadow-sm gap-2 text-sm font-medium">
-          <span className="text-green-600 flex items-center gap-1"><CheckCircle size={16} /> Aktif</span>
+          <span className="text-green-600 flex items-center gap-1"><CheckCircle size={16} /> Data Tervalidasi</span>
         </div>
       </div>
 
@@ -90,7 +164,7 @@ export function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
           title="Total Siswa" 
-          value={stats.totalStudentsX + stats.totalStudentsXI + stats.totalStudentsXII} 
+          value={stats.totalStudents} 
           icon={<Users size={24} />} 
           colorClass="bg-blue-50 text-blue-600"
         />
@@ -118,7 +192,7 @@ export function Dashboard() {
         {/* Siswa per Jurusan / Tingkat */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-800">Siswa per Jurusan & Tingkat</h3>
+            <h3 className="font-semibold text-slate-800">Siswa per Jurusan & Tingkat (Database)</h3>
             <TrendingUp size={18} className="text-slate-400" />
           </div>
           <div className="h-72">

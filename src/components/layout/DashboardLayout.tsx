@@ -17,12 +17,15 @@ export function DashboardLayout({ onLogout }: { onLogout: () => void }) {
     { name: 'Data Siswa', path: '/master/siswa', icon: <Users size={20} /> },
     { name: 'Data Guru', path: '/master/guru', icon: <UserCircle size={20} /> },
     { name: 'Data Kelas', path: '/master/kelas', icon: <GraduationCap size={20} /> },
+    { name: 'Data Admin', path: '/master/admin', icon: <Settings size={20} /> },
     { type: 'header', name: 'AKADEMIK' },
     { name: 'Input Nilai', path: '/akademik/nilai', icon: <CheckSquare size={20} /> },
     { type: 'header', name: 'NON AKADEMIK' },
     { name: 'Kehadiran & Sikap', path: '/non-akademik/kehadiran', icon: <Award size={20} /> },
     { type: 'header', name: 'LAPORAN' },
     { name: 'Cetak Raport', path: '/cetak/raport', icon: <Printer size={20} /> },
+    { type: 'header', name: 'BANTUAN' },
+    { name: 'Panduan', path: '/panduan', icon: <BookOpen size={20} /> },
   ];
 
   return (
