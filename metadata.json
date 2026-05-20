@@ -1,0 +1,6 @@
+{
+  "name": "E-Raport Kurikulum Merdeka",
+  "description": "Aplikasi manajemen nilai Raport Kurikulum Merdeka untuk guru, wali kelas, dan admin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
