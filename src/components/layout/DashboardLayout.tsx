@@ -1,31 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, BookOpen, GraduationCap, 
-  Settings, LogOut, Menu, X, CheckSquare, Award, Printer, UserCircle
+  Settings, LogOut, Menu, X, CheckSquare, Award, Printer, UserCircle, HelpCircle, FileText, ClipboardList
 } from 'lucide-react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
 import { mockUsers } from '../../store/mockDb';
 
 export function DashboardLayout({ onLogout }: { onLogout: () => void }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeYear, setActiveYear] = useState('2023/2024');
   const user = mockUsers[0]; // Simulate Admin login
+
+  useEffect(() => {
+    const q = query(collection(db, 'academic_years'), where('isActive', '==', true));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const doc = snapshot.docs[0];
+        setActiveYear(doc.data().name);
+      } else {
+        setActiveYear('Belum diatur');
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
     { type: 'header', name: 'MASTER DATA' },
+    { name: 'Tahun Ajaran', path: '/master/tahun-ajaran', icon: <BookOpen size={20} /> },
     { name: 'Data Siswa', path: '/master/siswa', icon: <Users size={20} /> },
     { name: 'Data Guru', path: '/master/guru', icon: <UserCircle size={20} /> },
     { name: 'Data Kelas', path: '/master/kelas', icon: <GraduationCap size={20} /> },
+    { name: 'Data Mapel', path: '/master/mapel', icon: <BookOpen size={20} /> },
+    { name: 'Data Jurusan', path: '/master/jurusan', icon: <BookOpen size={20} /> },
+    { name: 'Ekstrakurikuler', path: '/master/ekstrakurikuler', icon: <Award size={20} /> },
+    { name: 'Kokurikuler', path: '/master/kokurikuler', icon: <Award size={20} /> },
     { name: 'Data Admin', path: '/master/admin', icon: <Settings size={20} /> },
+    
     { type: 'header', name: 'AKADEMIK' },
     { name: 'Input Nilai', path: '/akademik/nilai', icon: <CheckSquare size={20} /> },
+    
     { type: 'header', name: 'NON AKADEMIK' },
-    { name: 'Kehadiran & Sikap', path: '/non-akademik/kehadiran', icon: <Award size={20} /> },
-    { type: 'header', name: 'LAPORAN' },
-    { name: 'Cetak Raport', path: '/cetak/raport', icon: <Printer size={20} /> },
+    { name: 'Input Kehadiran', path: '/non-akademik/kehadiran', icon: <ClipboardList size={20} /> },
+    { name: 'Nilai Ekstrakurikuler', path: '/non-akademik/ekskul', icon: <Award size={20} /> },
+    { name: 'Nilai Kokurikuler', path: '/non-akademik/kokurikuler', icon: <Award size={20} /> },
+    { name: 'Prestasi Siswa', path: '/non-akademik/prestasi', icon: <Award size={20} /> },
+    { name: 'Mutasi Siswa', path: '/non-akademik/mutasi', icon: <Users size={20} /> },
+    { name: 'Catatan Wali Kelas', path: '/non-akademik/catatan', icon: <FileText size={20} /> },
+    
+    { type: 'header', name: 'LAPORAN CETAK' },
+    { name: 'Cetak DKN', path: '/laporan/dkn', icon: <Printer size={20} /> },
+    { name: 'Cetak Raport Semester', path: '/laporan/raport', icon: <Printer size={20} /> },
+    { name: 'Cetak PTS', path: '/laporan/pts', icon: <Printer size={20} /> },
+    { name: 'Cetak PAS', path: '/laporan/pas', icon: <Printer size={20} /> },
+    { name: 'Cetak Leger Nilai', path: '/laporan/leger', icon: <Printer size={20} /> },
+
+    { type: 'header', name: 'PENGATURAN' },
+    { name: 'Reset Database', path: '/pengaturan/database', icon: <Settings size={20} /> },
+    
     { type: 'header', name: 'BANTUAN' },
-    { name: 'Panduan', path: '/panduan', icon: <BookOpen size={20} /> },
+    { name: 'Panduan', path: '/panduan', icon: <HelpCircle size={20} /> },
   ];
 
   return (
@@ -115,8 +153,9 @@ export function DashboardLayout({ onLogout }: { onLogout: () => void }) {
                <span className="text-xs font-bold text-slate-400 mr-2 uppercase tracking-wider">Tahun Ajaran</span>
                <input 
                  type="text"
-                 defaultValue="2023/2024"
-                 className="w-24 px-2 py-1 bg-slate-50 border border-slate-200 rounded font-medium text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm placeholder-slate-400"
+                 value={activeYear}
+                 readOnly
+                 className="w-28 px-2 py-1 bg-slate-50 border border-slate-200 rounded font-medium text-slate-700 focus:outline-none text-sm cursor-not-allowed"
                  placeholder="YYYY/YYYY"
                />
              </div>
